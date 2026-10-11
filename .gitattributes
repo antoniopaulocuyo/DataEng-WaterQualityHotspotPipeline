@@ -1,0 +1,13 @@
+# Keep LF line endings on every machine (the Docker containers are Linux; CRLF breaks shell scripts).
+* text=auto eol=lf
+
+# Binary files: never rewrite line endings
+*.png     binary
+*.jpg     binary
+*.svg     text
+*.woff2   binary
+*.parquet binary
+*.zip     binary
+*.shp     binary
+*.dbf     binary
+*.shx     binary

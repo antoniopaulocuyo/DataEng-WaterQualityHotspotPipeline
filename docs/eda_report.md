@@ -6,6 +6,7 @@
 
 - **25,108 harmonized observations** from **285 sites** (300 sampled) across **3 sources**.
 - Dates 2015-01-05 to 2025-12-29; 3.8% of values are censored (below/above a detection limit).
+- **Coverage:** sampled sites exist in us, europe, gemstat_latin_america. No sampled sites in gemstat_africa, gemstat_asia. Results describe these strata only and are not global comparisons.
 
 ## 2. Raw batches
 
@@ -13,10 +14,10 @@
 |---|---|---|---|---|---|---|
 | natural_earth | natural_earth_e47c2a7cb821 | success | 8 | 4,596 | 51.15 | no |
 | open_meteo | open_meteo_1265e632620d | success | 258 | 1,029,164 | 23.64 | no |
-| owq_eionet | owq_eionet_e86ef04d7716 | success | 47 | 1,085,694 | 98.13 | yes |
+| open_meteo | open_meteo_2d6c85b88b47 | success | 5 | 12,060 | 0.28 | no |
 | owq_eionet | owq_eionet_e86ef04d7716 | success | 47 | 1,085,694 | 98.13 | yes |
 | owq_gemstat | owq_gemstat_cbe19092b675 | success | 45 | 263,711 | 34.82 | yes |
-| owq_gemstat | owq_gemstat_cbe19092b675 | success | 45 | 263,711 | 34.82 | yes |
+| wqp_results | wqp_results_8851c1786551 | success | 2 | 1,321 | 0.70 | no |
 | wqp_results | wqp_results_8c80b98f221b | success | 6 | 13,240 | 7.06 | yes |
 | wqp_summary | wqp_summary_9fe8e48f2a31 | success | 118 | 540,908 | 174.93 | no |
 
@@ -53,6 +54,8 @@
 | 2024 | 0 | 0 | 1,006 | 1,006 |
 | 2025 | 0 | 0 | 911 | 911 |
 
+Last year with data per source: owq_eionet 2021, owq_gemstat 2021, wqp 2025. Years are uneven, so each area's most recent years are different calendar years.
+
 ![Observations per year](figures/eda_observations_per_year.png)
 
 ![Seasonality](figures/eda_seasonality.png)
@@ -77,14 +80,26 @@ Geometric mean uses the same shift as MART-1 (exp(mean(log(v + 1))) − 1). `pct
 
 ## 7. Sites, eligibility and sampling
 
-| stratum | realm | candidates | eligible | sampled |
+| stratum | realm | candidates | eligible | sampled | status |
+|---|---|---|---|---|---|
+| us | freshwater | 60 | 60 | 60 | sampled |
+| us | marine | 60 | 60 | 60 | sampled |
+| europe | freshwater | 8,791 | 3,454 | 60 | sampled |
+| europe | marine | 472 | 224 | 60 | sampled |
+| gemstat_africa | freshwater | 0 | 0 | 0 | no sites found |
+| gemstat_africa | marine | 0 | 0 | 0 | no sites found |
+| gemstat_asia | freshwater | 2,067 | 0 | 0 | no eligible sites |
+| gemstat_asia | marine | 0 | 0 | 0 | no sites found |
+| gemstat_latin_america | freshwater | 3,580 | 1,463 | 60 | sampled |
+| gemstat_latin_america | marine | 0 | 0 | 0 | no sites found |
+
+**Where the sampled sites are** (ISO country code and number of sampled sites):
+
+| stratum | sampled_sites | countries | top_countries | top_country_share |
 |---|---|---|---|---|
-| europe | freshwater | 8,791 | 3,454 | 60 |
-| europe | marine | 472 | 224 | 60 |
-| gemstat_asia | freshwater | 2,067 | 0 | 0 |
-| gemstat_latin_america | freshwater | 3,580 | 1,463 | 60 |
-| us | freshwater | 60 | 60 | 60 |
-| us | marine | 60 | 60 | 60 |
+| europe | 120 | 13 | ES 47, DE 36, NL 8, PL 7, HR 5 | 0.39 |
+| gemstat_latin_america | 60 | 1 | MX 60 | 1.00 |
+| us | 120 | 3 | US 112, PR 5, VI 3 | 0.93 |
 
 | source_code | sites | min_days | median_days | max_days | median_years |
 |---|---|---|---|---|---|
@@ -103,8 +118,8 @@ Geometric mean uses the same shift as MART-1 (exp(mean(log(v + 1))) − 1). `pct
 | censor_direction | 96.24 |
 | detection_limit | 75.87 |
 | activity_id | 54.73 |
-| activity_type | 54.73 |
 | result_status | 54.73 |
+| activity_type | 54.73 |
 | original_unit | 2.30 |
 | original_value | 2.11 |
 
@@ -141,7 +156,7 @@ Geometric mean uses the same shift as MART-1 (exp(mean(log(v + 1))) − 1). `pct
 | owq_gemstat | 4,611 | 100.00 | 22.06 |
 | wqp | 11,367 | 100.00 | 19.47 |
 
-Rain-based results are only meaningful once coverage is complete (full ING-4 pull).
+Rain coverage is at least 100% in every source, so rain-based results use the full weather pull (VAL-3 `weather_coverage` threshold: 90%).
 
 ## 10. Persistent hotspots by stratum (MART-1)
 
@@ -156,3 +171,16 @@ Rain-based results are only meaningful once coverage is complete (full ING-4 pul
 ![Hotspot share](figures/eda_hotspot_share.png)
 
 Strata measure different kinds of water (GEMStat river stations, Eionet bathing sites, WQP mixed networks), so cross-stratum differences reflect monitoring design as well as pollution.
+
+## 11. Wet vs dry exceedance (key question 3)
+
+| stratum | realm | sites | sites_with_wet_and_dry | median_wet_rate | median_dry_rate | share_wet_higher |
+|---|---|---|---|---|---|---|
+| europe | freshwater | 60 | 54 | 0.00 | 0.00 | 0.13 |
+| europe | marine | 60 | 54 | 0.00 | 0.00 | 0.20 |
+| gemstat_latin_america | freshwater | 60 | 59 | 0.80 | 0.52 | 0.73 |
+| us | freshwater | 52 | 50 | 0.25 | 0.05 | 0.68 |
+| us | marine | 53 | 53 | 0.14 | 0.04 | 0.66 |
+| all | all | 285 | 270 | 0.09 | 0.04 | 0.48 |
+
+Rates are per site: the share of sample-days above the threshold on wet days (rain in the 48 h before sampling at or above the wet threshold in `config/business_rules.yaml`) vs dry days. `share_wet_higher` is the share of sites whose wet rate is above their dry rate. Sites need both wet and dry sample-days to be compared. This is an association, not proof that rain causes the exceedance, and sites with few wet days give noisy rates.
