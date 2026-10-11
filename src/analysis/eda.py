@@ -93,7 +93,7 @@ def table_raw(raw: pd.DataFrame, stg_manifest: dict) -> pd.DataFrame:
     used = set(stg_manifest.get("params", {}).get("inputs", {}).values())
     if raw.empty:
         return raw
-    t = raw.copy()
+    t = raw.drop_duplicates(["source", "batch_id"]).copy()      # the same batch can be found under two paths
     t["used_by_staging"] = t["batch_id"].isin(used)
     return t.sort_values(["source", "batch_id"]).reset_index(drop=True)
 
@@ -139,11 +139,39 @@ def table_value_stats(obs, thr: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def table_sites(sites) -> pd.DataFrame:
+def table_sites(sites, sampling: dict | None = None) -> pd.DataFrame:
+    """Candidates, eligible and sampled sites per stratum x realm.
+
+    With the sampling config, every configured stratum x realm is listed, so strata with no data (for example
+    GEMStat Africa) show as explicit zeros instead of silently missing.
+    """
     s = sites[sites["stratum"].notna()]
     t = s.groupby(["stratum", "realm"]).agg(candidates=("site_key", "count"), eligible=("is_eligible", "sum"),
                                             sampled=("is_sampled", "sum")).reset_index()
-    return t.astype({"eligible": int, "sampled": int})
+    if sampling:
+        grid = pd.MultiIndex.from_product([list(sampling.get("strata", {})), list(sampling["realms"])],
+                                          names=["stratum", "realm"]).to_frame(index=False)
+        t = grid.merge(t, on=["stratum", "realm"], how="left").fillna({"candidates": 0, "eligible": 0, "sampled": 0})
+    t = t.astype({"candidates": int, "eligible": int, "sampled": int})
+    t["status"] = np.where(t["sampled"] > 0, "sampled",
+                           np.where(t["candidates"] > 0, "no eligible sites", "no sites found"))
+    return t
+
+
+def table_countries(sites) -> pd.DataFrame | None:
+    """Where the sampled sites are: country mix per stratum (shows a stratum that is really one country)."""
+    if "country_iso" not in sites.columns:
+        return None
+    s = sites[sites["is_sampled"] & sites["stratum"].notna()].copy()
+    s["country_iso"] = s["country_iso"].fillna("unassigned")
+    rows = []
+    for stratum, g in s.groupby("stratum"):
+        vc = g["country_iso"].value_counts()
+        rows.append({"stratum": stratum, "sampled_sites": len(g),
+                     "countries": int((vc.index != "unassigned").sum()),
+                     "top_countries": ", ".join(f"{k} {v}" for k, v in vc.head(5).items()),
+                     "top_country_share": vc.iloc[0] / len(g)})
+    return pd.DataFrame(rows)
 
 
 def table_samples_per_site(obs) -> pd.DataFrame:
@@ -190,6 +218,27 @@ def table_weather(curated) -> pd.DataFrame | None:
     return fo.groupby("source").agg(observations=("obs_key", "count"),
                                     pct_with_rain=("rain_48h_mm", lambda s: s.notna().mean() * 100),
                                     pct_wet=("is_wet", lambda s: (s == True).mean() * 100)).reset_index()  # noqa: E712
+
+
+def _wet_dry_row(g: pd.DataFrame) -> dict:
+    both = g.dropna(subset=["wet_exceedance_rate", "dry_exceedance_rate"])
+    return {"sites": len(g), "sites_with_wet_and_dry": len(both),
+            "median_wet_rate": both["wet_exceedance_rate"].median() if len(both) else np.nan,
+            "median_dry_rate": both["dry_exceedance_rate"].median() if len(both) else np.nan,
+            "share_wet_higher": (both["wet_exceedance_rate"] > both["dry_exceedance_rate"]).mean() if len(both) else np.nan}
+
+
+def table_wet_dry(curated) -> pd.DataFrame | None:
+    """Key question 3: is the exceedance rate higher after rain? Site-level wet vs dry rates from MART-1."""
+    if "mart_site_hotspot" not in curated or "dim_site" not in curated:
+        return None
+    m = curated["mart_site_hotspot"]
+    if not {"wet_exceedance_rate", "dry_exceedance_rate"} <= set(m.columns):
+        return None
+    h = m.merge(curated["dim_site"][["site_key", "stratum"]], on="site_key")
+    rows = [{"stratum": st, "realm": rl, **_wet_dry_row(g)} for (st, rl), g in h.groupby(["stratum", "realm"])]
+    rows.append({"stratum": "all", "realm": "all", **_wet_dry_row(h)})
+    return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------------- figures
@@ -244,6 +293,32 @@ def figures(obs, thr, curated, fig_dir: Path) -> dict[str, str]:
     return out
 
 
+def coverage_line(sites_table: pd.DataFrame) -> str:
+    """One-sentence statement of what is and is not covered, computed from the sampling table."""
+    have = list(dict.fromkeys(sites_table.loc[sites_table["sampled"] > 0, "stratum"]))
+    none = [s for s in dict.fromkeys(sites_table["stratum"]) if s not in have]
+    text = f"- **Coverage:** sampled sites exist in {', '.join(have) or 'no stratum'}."
+    if none:
+        text += f" No sampled sites in {', '.join(none)}."
+    return text + " Results describe these strata only and are not global comparisons."
+
+
+def last_year_line(by_year: pd.DataFrame) -> str:
+    """Last year with data per source: the uneven time coverage, stated next to the table."""
+    last = {c: int(by_year.loc[by_year[c] > 0, "year"].max()) for c in by_year.columns if c not in ("year", "total")
+            and (by_year[c] > 0).any()}
+    return ("Last year with data per source: " + ", ".join(f"{c} {y}" for c, y in last.items()) +
+            ". Years are uneven, so each area's most recent years are different calendar years.")
+
+
+def weather_note(weather: pd.DataFrame) -> str:
+    low = float(weather["pct_with_rain"].min())
+    if low >= 90:                                    # same 90% threshold as the VAL-3 weather_coverage check
+        return (f"Rain coverage is at least {low:.0f}% in every source, so rain-based results use the full "
+                "weather pull (VAL-3 `weather_coverage` threshold: 90%).")
+    return f"Rain coverage is only {low:.0f}% for at least one source, so rain-based results are provisional."
+
+
 # ---------------------------------------------------------------- report
 def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
     obs, sites = inputs["obs"], inputs["sites"]
@@ -260,6 +335,7 @@ def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
         f"({int(sites['is_sampled'].sum())} sampled) across **{obs['source_code'].nunique()} sources**.",
         f"- Dates {obs['sample_date'].min().date()} to {obs['sample_date'].max().date()}; "
         f"{obs['is_censored'].mean():.1%} of values are censored (below/above a detection limit).",
+        coverage_line(tables["sites"]),
         "",
         "## 2. Raw batches",
         "",
@@ -276,6 +352,8 @@ def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
         "## 5. Observations by year",
         "",
         md_table(tables["by_year"]),
+        "",
+        last_year_line(tables["by_year"]),
         "",
         f"![Observations per year]({'figures/' + figs['per_year']})",
         "",
@@ -297,6 +375,8 @@ def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
         "",
         md_table(tables["sites"]),
         "",
+        *(["**Where the sampled sites are** (ISO country code and number of sampled sites):", "",
+           md_table(tables["countries"]), ""] if tables.get("countries") is not None else []),
         md_table(tables["per_site"]),
         "",
         f"![Samples per site]({'figures/' + figs['per_site']})",
@@ -318,12 +398,19 @@ def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
     ]
     if tables.get("weather") is not None:
         lines += ["## 9. Weather coverage (curated)", "", md_table(tables["weather"]), "",
-                  "Rain-based results are only meaningful once coverage is complete (full ING-4 pull).", ""]
+                  weather_note(tables["weather"]), ""]
     if tables.get("hotspots") is not None:
         lines += ["## 10. Persistent hotspots by stratum (MART-1)", "", md_table(tables["hotspots"]), "",
                   f"![Hotspot share]({'figures/' + figs['hotspots']})", "",
                   "Strata measure different kinds of water (GEMStat river stations, Eionet bathing sites, "
                   "WQP mixed networks), so cross-stratum differences reflect monitoring design as well as pollution.", ""]
+    if tables.get("wet_dry") is not None:
+        lines += ["## 11. Wet vs dry exceedance (key question 3)", "", md_table(tables["wet_dry"]), "",
+                  "Rates are per site: the share of sample-days above the threshold on wet days (rain in the 48 h before "
+                  "sampling at or above the wet threshold in `config/business_rules.yaml`) vs dry days. "
+                  "`share_wet_higher` is the share of sites whose wet rate is above their dry rate. Sites need both wet "
+                  "and dry sample-days to be compared. This is an association, not proof that rain causes the exceedance, "
+                  "and sites with few wet days give noisy rates.", ""]
     return "\n".join(lines)
 
 
@@ -339,13 +426,15 @@ def run(docs_dir: Path | None = None) -> Path:
         "by_indicator": table_by_indicator(obs),
         "by_year": table_by_year(obs),
         "values": table_value_stats(obs, thr),
-        "sites": table_sites(sites),
+        "sites": table_sites(sites, sampling),
+        "countries": table_countries(sites),
         "per_site": table_samples_per_site(obs),
         "nulls": table_nulls(obs),
         "drops": table_drops(inputs["drops"]),
         "units": table_unmapped_units(inputs["stg_manifest"]),
         "weather": table_weather(curated),
         "hotspots": table_hotspots(curated),
+        "wet_dry": table_wet_dry(curated),
     }
     csv_dir = outputs_dir() / "eda"
     csv_dir.mkdir(parents=True, exist_ok=True)
