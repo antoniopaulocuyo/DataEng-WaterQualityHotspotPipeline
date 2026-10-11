@@ -1,0 +1,22 @@
+﻿2026-10-11 14:10:56 | INFO | stage=load | source=postgres | batch=manual | dim_source: rows in 3, inserted 0, updated 3, deleted 0, rows in table 3
+2026-10-11 14:10:56 | INFO | stage=load | source=postgres | batch=manual | dim_indicator: rows in 4, inserted 0, updated 4, deleted 0, rows in table 4
+2026-10-11 14:10:56 | INFO | stage=load | source=postgres | batch=manual | dim_region: rows in 107, inserted 0, updated 107, deleted 0, rows in table 107
+2026-10-11 14:10:56 | INFO | stage=load | source=postgres | batch=manual | dim_grid_cell: rows in 256, inserted 0, updated 256, deleted 0, rows in table 256
+2026-10-11 14:10:56 | INFO | stage=load | source=postgres | batch=manual | dim_site: rows in 300, inserted 0, updated 300, deleted 0, rows in table 300
+2026-10-11 14:11:23 | INFO | stage=load | source=postgres | batch=manual | fact_weather_daily: rows in 1028608, inserted 0, updated 1028608, deleted 0, rows in table 1028608
+2026-10-11 14:11:26 | INFO | stage=load | source=postgres | batch=manual | fact_observation: rows in 25108, inserted 0, updated 25108, deleted 0, rows in table 25108
+2026-10-11 14:11:26 | INFO | stage=load | source=postgres | batch=manual | mart_site_hotspot: rows in 285, inserted 0, updated 285, deleted 0, rows in table 285
+2026-10-11 14:11:26 | INFO | stage=load | source=postgres | batch=manual | mart_region_priority: rows in 97, inserted 0, updated 97, deleted 0, rows in table 97
+Load run 'final_rerun_1' at 2026-10-11 14:11:26 UTC, curated_ref=manual
+               table  rows_in  inserted  updated  deleted  rows_in_table
+          dim_source        3         0        3        0              3
+       dim_indicator        4         0        4        0              4
+          dim_region      107         0      107        0            107
+       dim_grid_cell      256         0      256        0            256
+            dim_site      300         0      300        0            300
+  fact_weather_daily  1028608         0  1028608        0        1028608
+    fact_observation    25108         0    25108        0          25108
+   mart_site_hotspot      285         0      285        0            285
+mart_region_priority       97         0       97        0             97
+Total inserted: 0, updated: 1054768, deleted: 0
+

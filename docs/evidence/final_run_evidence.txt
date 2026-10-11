@@ -1,0 +1,101 @@
+﻿== 1. Row count per table
+      table_name      | row_count 
+----------------------+-----------
+ dim_grid_cell        |       256
+ dim_indicator        |         4
+ dim_region           |       107
+ dim_site             |       300
+ dim_source           |         3
+ dq_results           |       119
+ etl_batch_log        |        14
+ fact_observation     |     25108
+ fact_weather_daily   |   1028608
+ mart_region_priority |        97
+ mart_site_hotspot    |       285
+(11 rows)
+
+
+== 2. Observations per source (matches reconciliation: staging rows = fact_observation rows)
+   source    | observations | sites | first_date | last_date  | pct_with_rain 
+-------------+--------------+-------+------------+------------+---------------
+ owq_eionet  |         9130 |   120 | 2015-04-20 | 2021-09-27 |         100.0
+ owq_gemstat |         4611 |    60 | 2015-02-02 | 2021-09-21 |         100.0
+ wqp         |        11367 |   105 | 2015-01-05 | 2025-12-29 |         100.0
+(3 rows)
+
+
+== 3. Sampled sites per stratum and realm
+        stratum        |   realm    | sites 
+-----------------------+------------+-------
+ europe                | freshwater |    60
+ europe                | marine     |    60
+ gemstat_latin_america | freshwater |    60
+ us                    | freshwater |    60
+ us                    | marine     |    60
+(5 rows)
+
+
+== 4. Load runs (one row per run; a rerun of the same data shows the same rows_out)
+                dag_run_id                | status  | tables | rows_out |     started_at      |     finished_at     
+------------------------------------------+---------+--------+----------+---------------------+---------------------
+ manual__2026-10-11T14:04:54.229550+00:00 | success |      9 |  1054768 | 2026-10-11 14:07:51 | 2026-10-11 14:08:13
+ manual__2026-10-11T14:05:38.060875+00:00 | success |      5 |      670 | 2026-10-11 14:10:19 | 2026-10-11 14:10:19
+(2 rows)
+
+
+== 5. Validation summary, latest run per stage
+  stage  |                  run_id                  | checks | passed | failed_critical | failed_warning 
+---------+------------------------------------------+--------+--------+-----------------+----------------
+ raw     | manual__2026-10-11T14:05:38.060875+00:00 |     26 |     26 |               0 |              0
+ staging | manual__2026-10-11T14:05:38.060875+00:00 |      9 |      7 |               0 |              2
+ curated | manual__2026-10-11T14:04:54.229550+00:00 |      7 |      7 |               0 |              0
+(3 rows)
+
+
+== 6. Every check in the latest run per stage (failures are listed first)
+  stage  |        check_name        |  source_code  | severity | status | failed_count 
+---------+--------------------------+---------------+----------+--------+--------------
+ staging | stratum_coverage         | all           | warning  | fail   |            5
+ staging | value_range              | all           | warning  | fail   |            1
+ raw     | checksum_matches         | natural_earth | critical | pass   |            0
+ raw     | checksum_matches         | open_meteo    | critical | pass   |            0
+ raw     | checksum_matches         | owq_eionet    | critical | pass   |            0
+ raw     | checksum_matches         | wqp_results   | critical | pass   |            0
+ raw     | checksum_matches         | wqp_summary   | critical | pass   |            0
+ raw     | files_exist_non_empty    | natural_earth | critical | pass   |            0
+ raw     | files_exist_non_empty    | open_meteo    | critical | pass   |            0
+ raw     | files_exist_non_empty    | owq_eionet    | critical | pass   |            0
+ raw     | files_exist_non_empty    | wqp_results   | critical | pass   |            0
+ raw     | files_exist_non_empty    | wqp_summary   | critical | pass   |            0
+ raw     | json_shape               | open_meteo    | critical | pass   |            0
+ raw     | manifest_status_success  | natural_earth | critical | pass   |            0
+ raw     | manifest_status_success  | open_meteo    | critical | pass   |            0
+ raw     | manifest_status_success  | owq_eionet    | critical | pass   |            0
+ raw     | manifest_status_success  | wqp_results   | critical | pass   |            0
+ raw     | manifest_status_success  | wqp_summary   | critical | pass   |            0
+ raw     | required_columns_present | natural_earth | critical | pass   |            0
+ raw     | required_columns_present | open_meteo    | warning  | pass   |            0
+ raw     | required_columns_present | owq_eionet    | critical | pass   |            0
+ raw     | required_columns_present | wqp_results   | critical | pass   |            0
+ raw     | required_columns_present | wqp_summary   | critical | pass   |            0
+ raw     | row_count_matches        | natural_earth | critical | pass   |            0
+ raw     | row_count_matches        | open_meteo    | critical | pass   |            0
+ raw     | row_count_matches        | owq_eionet    | critical | pass   |            0
+ raw     | row_count_matches        | wqp_results   | critical | pass   |            0
+ raw     | row_count_matches        | wqp_summary   | critical | pass   |            0
+ staging | accepted_values          | all           | critical | pass   |            0
+ staging | coordinates_valid        | all           | critical | pass   |            0
+ staging | date_in_period           | all           | critical | pass   |            0
+ staging | keys_not_null            | all           | critical | pass   |            0
+ staging | observation_site_exists  | all           | critical | pass   |            0
+ staging | obs_key_unique           | all           | critical | pass   |            0
+ staging | schema_matches           | all           | critical | pass   |            0
+ curated | hotspot_share_sane       | all           | warning  | pass   |            0
+ curated | mart_rank_consistency    | all           | critical | pass   |            0
+ curated | pk_unique_in_db          | all           | critical | pass   |            0
+ curated | reconciliation           | all           | critical | pass   |            0
+ curated | referential_integrity    | all           | critical | pass   |            0
+ curated | tables_present           | all           | critical | pass   |            0
+ curated | weather_coverage         | all           | warning  | pass   |            0
+(42 rows)
+
