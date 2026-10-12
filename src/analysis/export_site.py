@@ -11,6 +11,7 @@ Contents of window.SITE_DATA
     strata      per stratum x realm: sites, hotspots, share, median ratio to threshold
     top_regions the 10 best-ranked regions (MART-1 priority ranking)
     top_sites   the 10 worst persistent-hotspot sites (highest exceedance rate, then ratio to threshold)
+    coverage    which areas have data, which have none, countries per area, concentration of the top 10
     legend      the severity scale (Low / Moderate / High / Critical / not enough data) with its definitions
     sites       every sampled site: position, stratum, realm, status, severity, key indicators
 Site status: "hotspot" (persistent), "monitored" (scored, not a hotspot), "insufficient" (no scored years).
@@ -67,8 +68,33 @@ def _clean(v):
     return v
 
 
+def coverage_block(s: pd.DataFrame, scored: pd.DataFrame, top_regions: list[dict],
+                   configured: list[str] | None) -> dict:
+    """What the sample covers, computed from the data so the page never claims more than it holds.
+
+    areas_with_data     strata with at least one scored site
+    areas_without_data  configured strata that ended with none (e.g. GEMStat Africa and Asia)
+    by_area             per stratum: scored sites, number of countries and the biggest countries
+    top_regions_*       how concentrated the top-10 ranking is in one country
+    """
+    have = sorted(scored["stratum"].dropna().unique())
+    by_area = []
+    for stratum, g in scored.groupby("stratum"):
+        vc = g["country_name"].dropna().value_counts()
+        by_area.append({"stratum": stratum, "sites": int(len(g)), "countries": int(len(vc)),
+                        "top": [{"country": k, "sites": int(v)} for k, v in vc.head(5).items()]})
+    countries = [r["country"] for r in top_regions if r.get("country")]
+    top_country = pd.Series(countries).value_counts().index[0] if countries else None
+    return {"areas_with_data": have,
+            "areas_without_data": [k for k in (configured or []) if k not in have],
+            "by_area": by_area,
+            "top_regions_country": top_country,
+            "top_regions_in_country": int(countries.count(top_country)) if top_country else 0,
+            "top_regions_total": len(countries)}
+
+
 def build_payload(t: dict[str, pd.DataFrame], period: dict, batch_id: str, generated_at: str,
-                  poor_year_rate: float = 0.10) -> dict:
+                  poor_year_rate: float = 0.10, configured_strata: list[str] | None = None) -> dict:
     sites_dim = t["dim_site"]
     hot = t["mart_site_hotspot"].drop_duplicates("site_key")
     regions = t["mart_region_priority"]
@@ -124,6 +150,7 @@ def build_payload(t: dict[str, pd.DataFrame], period: dict, batch_id: str, gener
     sites_out = [{k: _clean(v) for k, v in zip(cols, row)} for row in s[cols].itertuples(index=False)]
     legend = [dict(item, text=item["text"].format(low=f"{poor_year_rate:.0%}")) for item in SEVERITY_LEGEND]
     return {"meta": meta, "legend": legend, "strata": [{k: _clean(v) for k, v in r.items()} for r in by_stratum.to_dict("records")],
+            "coverage": coverage_block(s, scored, top_regions, configured_strata),
             "top_regions": top_regions, "top_sites": top_sites, "sites": sites_out}
 
 
@@ -139,8 +166,10 @@ def run(docs_dir: Path | None = None) -> Path:
     manifest = cur / "_manifest.json"
     batch = json.loads(manifest.read_text(encoding="utf-8")).get("batch_id", "unknown") if manifest.exists() else "unknown"
     poor_rate = float(load_yaml("business_rules")["exceedance"]["poor_year_exceedance_rate"])
-    payload = build_payload(tables, load_yaml("sampling")["period"], batch,
-                            datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), poor_rate)
+    sampling = load_yaml("sampling")
+    payload = build_payload(tables, sampling["period"], batch,
+                            datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), poor_rate,
+                            list(sampling.get("strata", {})))
     out_dir = (Path(docs_dir) if docs_dir else PROJECT_ROOT / "docs") / "data"
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "site_data.js"

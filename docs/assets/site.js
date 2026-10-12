@@ -13,7 +13,7 @@
   var C = { slate: "#193C40", cyan: "#3A8C95", smoke: "#F3F3F3" };
   var SEV = { low: "#E1FCC4", moderate: "#FCC4C5", high: "#C1686A", critical: "#F95454", none: "#F3F3F3" };
   var SEV_ORDER = { none: 0, low: 1, moderate: 2, high: 3, critical: 4 };   // draw order: most severe on top
-  var AREA = { us: "United States", europe: "Europe", gemstat_latin_america: "Latin America" };
+  var AREA = { us: "United States", europe: "Europe", gemstat_latin_america: "Americas excl. US/Canada (GEMStat)" };
   var REALM = { freshwater: "Fresh water", marine: "Marine" };
   var fmt = new Intl.NumberFormat("en-US");
 
@@ -39,10 +39,31 @@
   function water(r) { return el("span", { "class": "chip " + (r === "marine" ? "marine" : "fresh"), text: REALM[r] || r || "–" }); }
 
   var m = D.meta;
+  var cov = D.coverage || { areas_with_data: [], areas_without_data: [], by_area: [] };
+
+  // A GEMStat area that holds a single country is named after it: the data decides the label, not the config.
+  cov.by_area.forEach(function (a) {
+    if (a.stratum.indexOf("gemstat") === 0 && a.countries === 1 && a.top.length) AREA[a.stratum] = a.top[0].country + " (GEMStat)";
+  });
+  function missingName(k) {
+    var w = k.replace(/^gemstat_/, "").replace(/_/g, " ");
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
   if (m.weather_coverage != null && m.weather_coverage < 0.9) {
     notice.hidden = false;
     notice.textContent = "Rainfall data covers " + pct(m.weather_coverage) + " of the measurements so far, so rain-related scores are provisional.";
   }
+
+  // Coverage banner: what this page covers and what it does not
+  var covered = cov.areas_with_data.map(area);
+  var covText = covered.length
+    ? "Coverage: " + covered.join(", ") + " only (" + fmt.format(m.sites) + " sampled sites). This is not a global comparison."
+    : "Coverage information is missing from the data file. Regenerate it with: python -m src.analysis.export_site";
+  if (cov.areas_without_data.length) {
+    covText += " No usable fecal-indicator data was found for " + cov.areas_without_data.map(missingName).join(", ") +
+      ": that reflects gaps in openly shared data, not cleaner water.";
+  }
+  document.getElementById("coverage").textContent = covText;
 
   // At a glance
   [["flask", m.observations == null ? "–" : fmt.format(m.observations), "measurements analysed, " + m.period],
@@ -56,6 +77,13 @@
 
   // Top 10 regions
   var regions = document.getElementById("regions");
+  if (cov.top_regions_total && cov.top_regions_in_country / cov.top_regions_total >= 0.5) {
+    var cv = document.getElementById("region-caveat");
+    cv.hidden = false;
+    cv.textContent = cov.top_regions_in_country + " of these " + cov.top_regions_total + " regions are in " + cov.top_regions_country +
+      ". Areas are watched by different networks over different years, so this ranking partly reflects which data exists. " +
+      "Read it as a ranking within the sampled sites, not a ranking of the world.";
+  }
   if (!D.top_regions.length) {
     regions.parentNode.insertBefore(el("p", { "class": "empty", text: "No region has enough monitored sites to be ranked yet." }), regions);
   }

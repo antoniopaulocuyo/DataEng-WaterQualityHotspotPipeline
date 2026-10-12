@@ -102,3 +102,24 @@ def test_severity_in_payload_and_legend(isolated_dirs, tmp_path):
     assert sev == {"a": "critical", "b": "low", "c": "critical", "d": "none"}       # a: hotspot at 0.5
     assert [i["key"] for i in p["legend"]] == ["low", "moderate", "high", "critical", "none"]
     assert "10%" in p["legend"][0]["text"]                                          # boundary comes from business_rules.yaml
+
+
+def test_coverage_block(isolated_dirs, tmp_path):
+    data, _ = isolated_dirs
+    world(data / "curated")
+    cov = load(export_site.run(docs_dir=tmp_path / "docs"))["coverage"]
+    assert cov["areas_with_data"] == ["gemstat_latin_america", "us"]                  # site d (europe) is not scored
+    assert cov["areas_without_data"] == ["europe", "gemstat_africa", "gemstat_asia"]  # configured but empty, from sampling.yaml
+    us = next(a for a in cov["by_area"] if a["stratum"] == "us")
+    assert us["sites"] == 2 and us["countries"] == 1 and us["top"] == [{"country": "United States", "sites": 2}]
+    assert cov["top_regions_total"] == 2 and cov["top_regions_in_country"] == 1
+
+
+def test_coverage_concentration_in_one_country():
+    regions = [{"country": "Mexico"}] * 9 + [{"country": "United States"}]
+    s = pd.DataFrame({"stratum": ["us"], "country_name": ["United States"]})
+    cov = export_site.coverage_block(s, s, regions, ["us", "gemstat_asia"])
+    assert cov["top_regions_country"] == "Mexico" and cov["top_regions_in_country"] == 9 and cov["top_regions_total"] == 10
+    assert cov["areas_without_data"] == ["gemstat_asia"]
+    empty = export_site.coverage_block(s.iloc[0:0], s.iloc[0:0], [], None)
+    assert empty["top_regions_country"] is None and empty["by_area"] == [] and empty["areas_without_data"] == []

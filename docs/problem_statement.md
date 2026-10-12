@@ -1,10 +1,10 @@
 # Problem Statement and Objectives
  
-**Owner:** Labilles **Status:** WIP
+**Owner:** Labilles **Status:** Final (2026-10-11)
  
 ## Title
  
-Identifying Persistent Fecal-Indicator Pollution Hotspots for Water Rehabilitation Planning: A Global Multi-Source Water Quality Data Pipeline
+Identifying Persistent Fecal-Indicator Pollution Hotspots for Water Rehabilitation Planning: A Multi-Source, Multi-Region Water Quality Data Pipeline
  
 ## Background
  
@@ -58,17 +58,22 @@ A one-time analysis would be outdated as soon as new monitoring data is publishe
 | *E. coli* (fresh) and enterococci (marine) as scored indicators | Chemical pollutants and nutrients |
 | Fecal and total coliform as supplementary, unscored indicators | Real-time alerting or forecasting of individual events |
 | 2015–2025 | Data before 2015 |
-| Stratified global sample: US, Europe, Africa, Asia, Latin America | Exhaustive coverage of every monitored site |
+| Stratified multi-region sample: United States, Europe, and GEMStat regions (Africa, Asia and Latin America were configured; only Mexico yielded scored sites) | Exhaustive coverage of every monitored site; global comparisons |
  
 ## Known limitations
  
+- **Coverage is the United States, Europe and Mexico, not the world.** Africa has no rows in the GEMStat extract, and Asia (India) has no *E. coli* rows, so neither has scored sites. Results must not be read as global comparisons; the dashboard and findings say so.
 - The analysis covers a stratified sample of sites, not every monitored water body.
 - Sampling frequency and laboratory methods differ between countries, so comparisons use the ratio to threshold rather than raw concentrations.
 - Weather data is gridded reanalysis, not a measurement at the sampling site.
-- Regions with little openly shared data (much of the Global South) are represented by fewer sites. This reflects gaps in data sharing, not necessarily lower pollution.
+- Regions with little openly shared data (much of Africa and Asia) have no scored sites. This reflects gaps in data sharing, not necessarily lower pollution.
 ## Success criteria
  
 - One Airflow run takes all sources from raw to marts without manual steps.
 - Rerunning with the same parameters produces identical row counts.
 - Every curated record can be traced back to its source file and batch.
 - The priority ranking can be reproduced from the repository on another machine.
+
+## Findings
+
+Answers to the key questions, with the final-run numbers, are in [`analysis_findings.md`](analysis_findings.md) and [`eda_report.md`](eda_report.md).

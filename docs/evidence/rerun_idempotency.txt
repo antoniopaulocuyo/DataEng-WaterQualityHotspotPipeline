@@ -1,4 +1,4 @@
-# LOAD-1 rerun idempotency: two loads of curated batch curated_64feca5327e4, warehouse emptied first. Weather is a 6-site dev sample (ING-4 full download pending).
+# EARLIER TEST (2026-10-06): two loads of curated batch curated_64feca5327e4 into an emptied warehouse, with a 6-site development weather sample (full Open-Meteo download was still pending). Superseded by the final-data evidence: rerun_idempotency_final.txt, rerun_idempotency_final_2.txt and final_run_evidence.txt (2026-10-11).
 2026-10-06 10:10:59 | INFO | stage=load | source=postgres | batch=curated_64feca5327e4 | dim_source: rows in 3, inserted 3, updated 0, deleted 0, rows in table 3
 2026-10-06 10:10:59 | INFO | stage=load | source=postgres | batch=curated_64feca5327e4 | dim_indicator: rows in 4, inserted 4, updated 0, deleted 0, rows in table 4
 2026-10-06 10:10:59 | INFO | stage=load | source=postgres | batch=curated_64feca5327e4 | dim_region: rows in 107, inserted 107, updated 0, deleted 0, rows in table 107

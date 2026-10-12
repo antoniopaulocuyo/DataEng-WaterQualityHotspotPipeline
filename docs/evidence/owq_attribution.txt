@@ -1,0 +1,8 @@
+﻿# Open Water Quality â€” global surface-water fecal indicator monitoring
+# Source: harmonized compilation of nine public monitoring programmes
+# (US Water Quality Portal, Eionet, UK Open WIMS, DataStream, GEMStat, Hub'Eau, NMMP, LAWA, WPdx).
+# Observations remain the property of the contributing programmes and must be cited directly on reuse.
+# Dataset: Vlah, Thomas & Ross (in prep). Portal: https://openwaterquality.org
+# Exported 2026-10-04. Filtered extract; concentrations in CFU or MPN per 100 mL.
+date,indicator,value,unit,latitude,longitude,source,region,water_body
+2015-01-02,E. coli,15,CFU/100mL,46.7874,17.1924,Eionet,Hungary,lake

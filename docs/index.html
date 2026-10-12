@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Water Hotspots · Global water quality data pipeline</title>
+  <title>Water Hotspots · Multi-region water quality data pipeline</title>
   <meta name="description" content="Persistent fecal-indicator pollution hotspots found by a reproducible, multi-source water quality data pipeline.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="vendor/fonts/federo-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -28,7 +28,7 @@
     <p class="kicker">Water Hotspots · Data Engineering project</p>
     <h1 class="wordmark" aria-label="water hotspots"><span>water</span><span>hotspots</span></h1>
     <p class="tagline">Clean water starts with clear data.</p>
-    <p class="project-title">Identifying water pollution hotspots to support water rehabilitation planning through a global water quality data pipeline.</p>
+    <p class="project-title">Identifying water pollution hotspots to support water rehabilitation planning through a multi-source, multi-region water quality data pipeline.</p>
     <p class="hero-links">
       <a href="#risk">Top 10 regions</a>
       <a href="#map-section">Map</a>
@@ -43,6 +43,7 @@
     <div class="wrap">
       <h2 id="h-glance">At a glance</h2>
       <p id="notice" class="notice" hidden></p>
+      <p id="coverage" class="notice coverage" role="note"></p>
       <div id="kpis" class="kpis"></div>
     </div>
   </section>
@@ -54,6 +55,7 @@
         weighs how many sites are persistent hotspots, how far above the limit they are, whether they are getting worse, and how
         strongly rain drives the pollution.</p>
       <ol id="regions" class="rank-list"></ol>
+      <p id="region-caveat" class="notice" role="note" hidden></p>
       <p class="caption">Score from 0 to 1. A region needs at least 3 monitored sites to be ranked.</p>
     </div>
   </section>
@@ -133,7 +135,7 @@
     <div class="wrap">
       <h2 id="h-limits">What to keep in mind</h2>
       <ul class="notes">
-        <li><strong>A sample, not every site.</strong> Results describe the sites we chose, not every water body.</li>
+        <li><strong>Not a global comparison.</strong> Only the areas named at the top of this page have data. Results describe the sites we chose in those areas, not every water body and not the world.</li>
         <li><strong>Different periods.</strong> US data runs to 2025, Eionet ends in 2021 and GEMStat effectively in 2018, so each area’s
           “recent years” differ.</li>
         <li><strong>Different networks.</strong> River stations, bathing sites and agency networks are not directly comparable.</li>

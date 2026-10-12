@@ -84,7 +84,7 @@ Note the loop: **sampling happens before the expensive pulls**. WQP results (ING
 | 5 | Validate staging | VAL-2 · `src/validation/staging_checks.py` | `python -m src.validation.staging_checks` | staging Parquet | `dq_report_staging_*.json` | `obs_key` unique |
 | 6 | Build curated tables | CUR-1 · `src/transform/curated.py` | `python -m src.transform.curated` | staging, Open-Meteo raw, Natural Earth attributes | `data/curated/*.parquet`, `_manifest.json` | weather coverage in manifest |
 | 7 | Score hotspots, rank regions | MART-1 · `src/transform/marts.py` | `python -m src.transform.marts` | curated Parquet | `mart_site_hotspot.parquet`, `mart_region_priority.parquet`, `outputs/priority_ranking.csv` | logged: sites scored, hotspots, ranked regions |
-| 8 | Load warehouse | DB-1 / LOAD-1 · `src/load/` | `python -m src.load.init_db` (DDL); load: *TBD in LOAD-1* | curated Parquet | 11 PostgreSQL tables, `etl_batch_log` | UPSERT counts |
+| 8 | Load warehouse | DB-1 / LOAD-1 · `src/load/` | `python -m src.load.init_db` (DDL); load: `python -m src.load.postgres [--curated-ref ID] [--run-id ID]` | curated Parquet | 11 PostgreSQL tables, `etl_batch_log` | UPSERT counts |
 | 9 | Validate curated + reconcile | VAL-3 · `src/validation/curated_checks.py` | `python -m src.validation.curated_checks` | PostgreSQL, staging manifest + drop log | `dq_report_curated_*.json`, `outputs/reconciliation.csv` | raw − drops = staging = `fact_observation`, per source |
  
 Inside Docker, prefix each command with `docker compose run --rm pipeline`. In the full run, Airflow (ING-6) calls the same `run()` / `build_*()` functions in this order.
@@ -145,21 +145,23 @@ mart_region_priority.region_code
 | Critical DQ check fails | The validation task raises `DataQualityError` and the Airflow run stops before the next layer |
 | Snapshot mode (`PIPELINE_MODE=snapshot`, default) | Any HTTP call raises `NetworkDisabledError`; the run uses the files already in `data/raw/` |
  
-## 6. Volumes (fill from the final full run)
- 
-Copy these from real logs / `outputs/reconciliation.csv`, never estimate them.
- 
+## 6. Volumes (final run, 2026-10-11)
+
+Sources: [`eda_report.md`](eda_report.md) §3 and §8, and [`evidence/final_run_evidence.txt`](evidence/final_run_evidence.txt).
+
 | Source | Raw rows | Dropped in staging | Staging rows | `fact_observation` rows |
 |---|---|---|---|---|
-| `wqp` | | | | |
-| `owq_gemstat` | | | | |
-| `owq_eionet` | | | | |
-| **Total** | | | | |
- 
+| `wqp` | 13,240 | 1,873 | 11,367 | 11,367 |
+| `owq_gemstat` | 263,711 | 259,100 | 4,611 | 4,611 |
+| `owq_eionet` | 1,085,694 | 1,076,564 | 9,130 | 9,130 |
+| **Total** | **1,362,645** | **1,337,537** | **25,108** | **25,108** |
+
+Dropped rows by reason: WQP 1,873 (`unit_unmapped` 1,449, `media_not_water` 273, `qc_blank` 108, `non_numeric_value` 31, `result_rejected` 12); OWQ rows are dropped because their site was not sampled (`site_not_sampled`), by design.
+
 | Other | Value |
 |---|---|
 | Sampled sites (us / europe / gemstat_latin_america) | 120 / 120 / 60 = 300 ([`business_rules.md`](business_rules.md) §6) |
-| Weather grid cells | |
-| `fact_weather_daily` rows | |
-| Persistent hotspots / sites scored | |
-| Regions ranked / insufficient_sites | |
+| Weather grid cells | 256 |
+| `fact_weather_daily` rows | 1,028,608 (256 cells × 4,018 days) |
+| Persistent hotspots / sites scored | 88 / 285 (Europe 5, Latin America 53, United States 30; [`eda_report.md`](eda_report.md) §10) |
+| Rows in `mart_region_priority` | 97 (the ranked / `insufficient_sites` split is in `outputs/priority_ranking.csv`) |
