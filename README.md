@@ -1,6 +1,8 @@
-# Global Water Quality Hotspot Pipeline
+# Water Quality Hotspot Pipeline
  
-**Identifying Persistent Fecal-Indicator Pollution Hotspots for Water Rehabilitation Planning: A Global Multi-Source Water Quality Data Pipeline**
+**Identifying Persistent Fecal-Indicator Pollution Hotspots for Water Rehabilitation Planning: A Multi-Source, Multi-Region Water Quality Data Pipeline**
+
+> **Scope:** the results cover the **United States, Europe and Mexico (GEMStat)** only. GEMStat's Africa and Asia strata are configured but have no scored sites (Africa has no rows in the extract; Asia has no *E. coli* rows), so the results are **not global comparisons**. Details: [`docs/analysis_findings.md`](docs/analysis_findings.md).
  
 ---
  
@@ -33,7 +35,7 @@ Whether a water source is considered safe is usually decided by counting fecal i
  
 Unfortunately the data is fragmented, thus planners have difficulty answering **which places have pollution problems that keep coming back, year after year?** A single high reading may be a one-off event. A site that exceeds safety thresholds in most years is a structural problem that needs rehabilitation. 
  
-**Why a pipeline rather than a one-time analysis.** This project developed a data pipeline that combined water-quality observation data with the relevant environmental factors to detect pollution hotspots for decision making regarding water rehabilitation measures. Water quality observation data will be analyzed geographically and chronologically to find the regions where the water quality is poor constantly and find out what factors contribute to water pollution. Environmental factors like rainfall and temperature has been incorporated to analyze the influence of environmental conditions on water quality. **(tentative) Finally, analytics was be utilized to develop pollution hotspots map and a rehabilitation prioritization framework.**
+**Why a pipeline rather than a one-time analysis.** This project developed a data pipeline that combined water-quality observation data with the relevant environmental factors to detect pollution hotspots for decision making regarding water rehabilitation measures. Water quality observation data will be analyzed geographically and chronologically to find the regions where the water quality is poor constantly and find out what factors contribute to water pollution. Environmental factors like rainfall and temperature has been incorporated to analyze the influence of environmental conditions on water quality. **Finally, a static dashboard with a hotspot map and a regional rehabilitation priority ranking presents the results.**
  
 **Key questions the data product answers**
  
@@ -78,7 +80,7 @@ Full problem statement: [`docs/problem_statement.md`](docs/problem_statement.md)
 | Supplementary indicators | Fecal coliform, total coliform: ingested and reported, not scored |
 | Safety thresholds | EPA 2012 Recreational Water Quality Criteria, single-sample values: **410 CFU/100 mL** (*E. coli*), **130 CFU/100 mL** (enterococci) |
 | Water bodies | Surface water: rivers, streams, lakes, reservoirs, estuaries, coastal/marine |
-| Geography | Stratified global sample across 5 strata: United States, Europe, and GEMStat Africa, Asia, and Latin America |
+| Geography | Stratified sample over 5 configured strata (United States, Europe, GEMStat Africa, Asia and Latin America). Only three have scored sites: United States, Europe and Mexico (GEMStat). Africa has no data and Asia has no *E. coli* rows, so results are **not global** |
 | Sampling | Up to K sites per stratum and realm; sites need ≥ 24 samples of their primary indicator across ≥ 3 distinct years; fixed random seed. All settings in [`config/sampling.yaml`](config/sampling.yaml) |
  
 **Why sample instead of ingesting everything.** Openly shared fecal indicator data is heavily concentrated in the United States and Europe. Taking the same number of sites from each stratum keeps well-documented regions from dominating the rankings, keeps the pipeline fast enough to rerun, and still exceeds the volume requirement. Sampling runs inside the pipeline with a fixed seed, so the same configuration always selects the same sites.
@@ -97,7 +99,7 @@ Full problem statement: [`docs/problem_statement.md`](docs/problem_statement.md)
  
 | # | Source | Provider | Access method | Format | Role in pipeline |
 |---|---|---|---|---|---|
-| 1 | GEMStat (via Open Water Quality export) | UNEP GEMS/Water; harmonized by UNU-INWEH | Open Water Quality export | CSV, GeoJSON | Global coverage: Africa, Asia, Latin America |
+| 1 | GEMStat (via Open Water Quality export) | UNEP GEMS/Water; harmonized by UNU-INWEH | Open Water Quality export | CSV, GeoJSON | Latin America (Mexico in the sample); no usable Africa or Asia data |
 | 2 | Eionet bathing water (via Open Water Quality export) | European Environment Agency; harmonized by UNU-INWEH | Open Water Quality export | CSV, GeoJSON | Europe; main source of marine / enterococci data |
 | 3 | Water Quality Portal | USGS, US EPA, NWQMC | REST API | CSV | United States; raw, unharmonized observations |
 | 4 | Open-Meteo Historical Weather | Open-Meteo (ERA5 reanalysis) | REST API | JSON | Daily rainfall and temperature per site |
@@ -165,7 +167,7 @@ Apache Airflow orchestrates steps 1–7 as one DAG. Docker Compose runs PostgreS
 | Data processing | pandas + PyArrow | Dataset fits comfortably in memory after sampling; PyArrow provides Parquet read/write |
 | Geospatial | GeoPandas | Spatial join of monitoring sites to administrative regions |
 | Raw formats | CSV, JSON, GeoJSON, Shapefile | Kept as delivered by each source, preserving traceability |
-| Staging format | Parquet (partitioned) | Columnar, compressed, preserves data types; partitions allow reading only the needed source/year |
+| Staging format | Parquet (partitioned) | Columnar, compressed, preserves data types; partitions allow reading only the needed source/year (measured in [`docs/format_benchmark.md`](docs/format_benchmark.md)) |
 | Database | PostgreSQL | Relational model with primary and foreign keys; `ON CONFLICT` UPSERT supports rerun safety |
 | Orchestration | Apache Airflow | Task dependencies, retries, parameters, scheduling, and per-task logs for diagnosing failures |
 | Environment | Docker, Docker Compose | Same services and versions on every machine |
@@ -256,7 +258,7 @@ cd project
  
 **Optional: create a `.env` file**
  
-The project runs **without** a `.env` file; every setting has a default. Create one only if you want to change a setting:
+The project runs **without** a `.env` file; every setting has a default. Create one if you want to change a setting, and **always for a first run on a machine with an empty `data/raw/`**, where you must set `PIPELINE_MODE=live` (see §8 and §11), because the default `snapshot` mode blocks all downloads:
  
 ```bash
 cp .env.example .env
@@ -281,6 +283,7 @@ Settings live in two places:
 |---|---|---|
 | `POSTGRES_DB` | `water_quality` | Warehouse database name, created on first start |
 | `POSTGRES_USER` | `wq_user` | Warehouse user, created on first start |
+| `PIPELINE_MODE` | `snapshot` | `snapshot` blocks every network call (`NetworkDisabledError`) and reuses the files already in `data/raw/`; `live` downloads from the sources. **Set `live` for the first run** when `data/raw/` is empty, then switch back to `snapshot` to rerun offline |
 | `POSTGRES_PASSWORD` | `change_me` | Warehouse password. Required by `src/load/db.py` (no code default); change it beyond local use |
 | `POSTGRES_PORT` | `5432` | Port on **your machine**. Change it if a local PostgreSQL already uses 5432; inside Docker it is always 5432 |
 | `POSTGRES_HOST` | `postgres` | Warehouse host name; inside Docker always `postgres` |
@@ -463,9 +466,9 @@ On Windows PowerShell, quotes inside JSON are not passed reliably to `docker`, s
 | 12 | Load PostgreSQL | `python -m src.load.postgres` |
 | 13 | Validate curated and reconcile | `python -m src.validation.curated_checks` |
  
-**Expected runtime** (live run on a laptop; estimates, replace with your final timings). Everything except weather takes under an hour: boundaries about 1 minute, OWQ 10–30 minutes, WQP site counts and sampling 5–20 minutes, WQP results 1–3 minutes, and sites, staging, curated, marts, load and validation a few minutes together. **Weather is the bottleneck:** Open-Meteo's free tier allows about 156 grid cells per day (9,000 weighted calls) and the sampled sites need about 256 cells. A first run therefore stops at the daily budget with a `partial` weather manifest, and `validate_raw` fails on it by design. Rerun the same trigger after 24 hours; completed cells are skipped. With all raw batches complete, a rerun takes minutes.
+**Expected runtime** (first-run download times are estimates from our live runs; the final run reused the downloaded batches, and its load finished about 3 minutes after the trigger). Everything except weather takes under an hour: boundaries about 1 minute, OWQ 10–30 minutes, WQP site counts and sampling 5–20 minutes, WQP results 1–3 minutes, and sites, staging, curated, marts, load and validation a few minutes together. **Weather is the bottleneck:** Open-Meteo's free tier allows about 156 grid cells per day (9,000 weighted calls) and the sampled sites need about 256 cells. A first run therefore stops at the daily budget with a `partial` weather manifest, and `validate_raw` fails on it by design. Rerun the same trigger after 24 hours; completed cells are skipped. With all raw batches complete, a rerun takes minutes.
  
-**Inputs are live.** On a first run the pipeline downloads from the source APIs. The sources keep receiving data, so a later first run can differ slightly from ours; reruns on the same machine reuse the downloaded batches. A frozen-input mode for exact reproduction is listed under future improvements (§17).
+**Inputs are live.** On a first run (empty `data/raw/`) set `PIPELINE_MODE=live` in `.env`; the pipeline then downloads from the source APIs (the raw files are about 0.4 GB and are git-ignored). The sources keep receiving data, so a later first run can differ slightly from ours. Reruns reuse the downloaded batches, and in the default `snapshot` mode the pipeline never touches the network, so it can be rerun offline from the same `data/raw/` folder. We do not ship our raw files; publishing them is listed under future improvements (§17).
  
 **Rerun strategy.** Running twice with the same parameters gives the same result and never duplicates data:
  
@@ -473,7 +476,9 @@ On Windows PowerShell, quotes inside JSON are not passed reliably to `docker`, s
 - **Atomic staging.** Staging is written to a temporary folder and swapped in, so no partitions from an earlier run are left behind.
 - **UPSERT on natural keys.** Loads use `INSERT … ON CONFLICT (pk) DO UPDATE`, so reloading the same rows updates them instead of adding copies.
 - **Fixed seed** (42) and sorted outputs make site sampling and rankings identical on every run.
-Evidence: [`docs/evidence/rerun_idempotency.txt`](docs/evidence/rerun_idempotency.txt) (two loads of the same batch, row counts per table), [`docs/evidence/dag_run_success.txt`](docs/evidence/dag_run_success.txt) and [`docs/evidence/dag_run_failure.txt`](docs/evidence/dag_run_failure.txt).
+Evidence (final run, 2026-10-11): [`docs/evidence/final_run_evidence.txt`](docs/evidence/final_run_evidence.txt) (row counts per table, load runs and validation summary, all from one script: [`sql/evidence.sql`](sql/evidence.sql)); [`docs/evidence/rerun_idempotency_final.txt`](docs/evidence/rerun_idempotency_final.txt) and [`docs/evidence/rerun_idempotency_final_2.txt`](docs/evidence/rerun_idempotency_final_2.txt) (the same curated data loaded again: 0 rows inserted, row counts unchanged); [`docs/evidence/dag_run_success.txt`](docs/evidence/dag_run_success.txt) and [`docs/evidence/dag_run_failure.txt`](docs/evidence/dag_run_failure.txt). [`docs/evidence/rerun_idempotency.txt`](docs/evidence/rerun_idempotency.txt) is an earlier test on a 6-site development weather sample, kept for history.
+
+**File formats and partitioning.** Raw keeps each source's own format (CSV, JSON, shapefile); staging and curated use Parquet, partitioned by `source_code=/year=`. [`docs/format_benchmark.md`](docs/format_benchmark.md) measures CSV, JSON Lines and Parquet on the real data (1,349,405 raw OWQ rows and the 25,108 staged observations): file size, write and read time, a 2-column read and type fidelity. On the raw OWQ rows Parquet is about 15× smaller than CSV and 37× smaller than JSON. The same report times a read filtered to one `source_code=`/`year=` partition against a full scan. Reproduce it with `docker compose run --rm -T pipeline python -m src.analysis.benchmark_formats` (about 5 minutes; add `--skip-raw` if Docker has less than 4 GB of memory).
  
 ## 12. Running and Inspecting Airflow
 **Open the UI:** http://localhost:8080. Log in with `AIRFLOW_ADMIN_USER` / `AIRFLOW_ADMIN_PASSWORD` from `.env` (default `admin` / `change_me`). DAGs are paused when first created (`DAGS_ARE_PAUSED_AT_CREATION`), so unpause `wq_hotspot_pipeline` with its toggle before the first run.
@@ -541,7 +546,7 @@ docker compose exec airflow-scheduler airflow dags list-runs wq_hotspot_pipeline
 docker compose logs airflow-scheduler --tail 100
 ```
  
-Evidence: [`docs/evidence/dag_run_success.txt`](docs/evidence/dag_run_success.txt) (all tasks green) and [`docs/evidence/dag_run_failure.txt`](docs/evidence/dag_run_failure.txt) (`start_year=1800` fails with `ConfigError`, not retried). Screenshots of the Grid view and a failed task's log: add to `docs/evidence/`.
+Evidence: [`docs/evidence/dag_run_success.txt`](docs/evidence/dag_run_success.txt) (all tasks green) and [`docs/evidence/dag_run_failure.txt`](docs/evidence/dag_run_failure.txt) (`start_year=1800` fails with `ConfigError`, not retried). Screenshot of the final run's Grid view: [`docs/evidence/airflow_grid_final.png`](docs/evidence/airflow_grid_final.png).
 ## 13. Data Quality and Validation Approach
  
 Validation runs automatically at three stages of the pipeline. Every check produces a pass/fail result; **critical** failures stop the Airflow task, **warnings** are recorded but don't stop the run. Each stage writes a JSON report to `outputs/dq/dq_report_{stage}_{run_id}.json` and, when Postgres is available, inserts the results into the `dq_results` table.
@@ -672,15 +677,16 @@ On Windows PowerShell: `Get-Content sql/queries.sql | docker compose exec -T pos
 - **~55% nulls** in `activity_id`, `activity_type`, `result_status` = OWQ rows (OWQ has no such fields).
 - **1,449 WQP rows (~11%) dropped as unmapped units**, mostly `MPN`/`CFU` without volume (STG-2 follow-up).
 - **Cross-stratum differences reflect monitoring design** (GEMStat river stations vs Eionet bathing sites vs WQP mixed networks), not only pollution.
-- **A sample, not every site:** 300 sampled sites (United States 120, Europe 120, Latin America 60). Results describe those sites, not every water body.
-- **Uneven time coverage:** US data runs to 2025, Eionet ends in 2021 and GEMStat effectively in 2018, so each area's "most recent 5 years" are different years.
-- **Asia and Africa are not analysed:** GEMStat has no African sites in the data, and its Asian data is coliform-only (median 0 *E. coli* samples). This reflects open-data gaps, not necessarily cleaner water.
+- **A sample, not every site:** 300 sampled sites (United States 120, Europe 120, Mexico 60). Results describe those sites, not every water body.
+- **Uneven time coverage:** US data runs to 2025, Eionet ends in 2021 and GEMStat effectively in 2018 (a few records to 2021), so each area's "most recent 5 years" are different years.
+- **Asia and Africa are not analysed:** the GEMStat extract has no African rows, and its only Asian region (India) has no *E. coli* rows (fecal coliform, total coliform and enterococci only), so no Asian site meets the eligibility rule for fresh water (2,067 candidate sites, 0 eligible). This reflects open-data gaps and the choice of scored indicator, not cleaner water. Results are not global comparisons.
+- **Narrow country mix:** all 60 GEMStat sites are in Mexico, and Spain and Germany are 69% of the 120 European sites, so the regional ranking is largely Mexican regions. The dashboard states the share next to the ranking.
 - **Excluded site types:** WQP site types outside the realm mapping (about 10,455 sites: BEACH Program, canals, Great Lakes, stream subtypes) and Eionet water bodies labelled "other" (18,060 sites) are excluded. Reasons: [`docs/business_rules.md`](docs/business_rules.md).
 - **French overseas territories** are coded as France, so their sites fall in the Europe stratum (strata are assigned by country continent).
 - **MPN is treated as CFU** (the assumption Open Water Quality also makes); same-day replicates are combined by geometric mean; WQP censored values count as half the limit, and OWQ values arrive already filled.
 - **Regional ranking needs at least 3 monitored sites per region,** so many regions are listed but unranked.
 - **Weather is gridded reanalysis** (ERA5 via Open-Meteo), not gauges at the sites, and the local sample date is matched to a UTC weather day. The 10 mm wet threshold is an assumption.
-- **Live inputs:** there is no frozen-input mode yet, so a later first run can differ slightly from ours (§11).
+- **Live inputs:** the raw files are not published, so a later first run (`PIPELINE_MODE=live`) can differ slightly from ours (§11).
 ## 16. Troubleshooting
  
  
@@ -726,11 +732,10 @@ docker compose up -d --build
 - **Higher-resolution and local-time weather:** station data where available, and weather aligned to the local sampling day.
 - **Censored-data statistics:** survival-analysis methods for censored values instead of the half-limit substitution.
 - **Live dashboard from the warehouse:** the published site is static (its data file is regenerated with `python -m src.analysis.export_site` and committed). Serving it from PostgreSQL would refresh it automatically.
-- **Frozen-input mode** (`PIPELINE_MODE=snapshot`): run from a fixed snapshot of the raw files with network calls disabled, for exact reproduction.
-- **Format benchmark and partition-pruning demo:** CSV vs JSON vs Parquet size and speed, and reading one `source_code=`/`year=` partition instead of scanning everything.
+- **Distributable raw snapshot:** `PIPELINE_MODE=snapshot` already blocks all network calls and reuses `data/raw/`, but the raw files (about 0.4 GB) are not published. Hosting them as a release asset, with a download script, would let anyone reproduce our exact run offline.
 - **Scheduled refresh and alerting:** a regular schedule plus notifications when a critical check fails.
 ---
  
 ## Acknowledgements
  
-Data from the Open Water Quality project (UNU-INWEH, Colorado State University, University of Colorado Boulder), including GEMStat (UNEP GEMS/Water) and Eionet (European Environment Agency); the Water Quality Portal (USGS, US EPA, NWQMC); and Natural Earth (public domain). Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0). Observations remain the property of the contributing monitoring programmes; see the attribution file bundled with each Open Water Quality export. The dashboard uses Leaflet (BSD-2) and the Federo and Lato fonts (SIL Open Font License).
+Data from the Open Water Quality project (UNU-INWEH, Colorado State University, University of Colorado Boulder), including GEMStat (UNEP GEMS/Water) and Eionet (European Environment Agency); the Water Quality Portal (USGS, US EPA, NWQMC); and Natural Earth (public domain). Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0). Observations remain the property of the contributing monitoring programmes and must be cited directly to them; the attribution header of each raw file is kept in [`docs/evidence/owq_attribution.txt`](docs/evidence/owq_attribution.txt). Open Water Quality dataset: Vlah, Thomas & Ross (in prep.), https://openwaterquality.org. The dashboard uses Leaflet (BSD-2) and the Federo and Lato fonts (SIL Open Font License).

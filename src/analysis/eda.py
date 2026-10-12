@@ -225,7 +225,8 @@ def _wet_dry_row(g: pd.DataFrame) -> dict:
     return {"sites": len(g), "sites_with_wet_and_dry": len(both),
             "median_wet_rate": both["wet_exceedance_rate"].median() if len(both) else np.nan,
             "median_dry_rate": both["dry_exceedance_rate"].median() if len(both) else np.nan,
-            "share_wet_higher": (both["wet_exceedance_rate"] > both["dry_exceedance_rate"]).mean() if len(both) else np.nan}
+            "share_wet_higher": (both["wet_exceedance_rate"] > both["dry_exceedance_rate"]).mean() if len(both) else np.nan,
+            "share_tied": (both["wet_exceedance_rate"] == both["dry_exceedance_rate"]).mean() if len(both) else np.nan}
 
 
 def table_wet_dry(curated) -> pd.DataFrame | None:
@@ -314,8 +315,8 @@ def last_year_line(by_year: pd.DataFrame) -> str:
 def weather_note(weather: pd.DataFrame) -> str:
     low = float(weather["pct_with_rain"].min())
     if low >= 90:                                    # same 90% threshold as the VAL-3 weather_coverage check
-        return (f"Rain coverage is at least {low:.0f}% in every source, so rain-based results use the full "
-                "weather pull (VAL-3 `weather_coverage` threshold: 90%).")
+        return (f"The weakest source has rain data for {low:.0f}% of its observations, above the 90% VAL-3 "
+                "`weather_coverage` threshold, so rain-based results use the full weather pull.")
     return f"Rain coverage is only {low:.0f}% for at least one source, so rain-based results are provisional."
 
 
@@ -340,6 +341,12 @@ def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
         "## 2. Raw batches",
         "",
         md_table(tables["raw"]) if not tables["raw"].empty else "_No raw manifests found._",
+        "",
+        "`used_by_staging` refers to observation inputs only: Natural Earth, the WQP summary and Open-Meteo feed sites, "
+        "sampling and the curated layer instead. Older test batches (smaller Open-Meteo and WQP results batches) stay on "
+        "disk and are not read by the final run. File and row counts include helper files the pipeline writes into a batch "
+        "(for example `sampled_sites.csv`, `grid_cells.csv`) and, for Natural Earth, the shapefile parts, so they can "
+        "exceed the data-only counts in `docs/evidence/profiling_summary.md`.",
         "",
         "## 3. Volume by layer",
         "",
@@ -408,7 +415,8 @@ def build_report(tables: dict, figs: dict, inputs: dict, period: dict) -> str:
         lines += ["## 11. Wet vs dry exceedance (key question 3)", "", md_table(tables["wet_dry"]), "",
                   "Rates are per site: the share of sample-days above the threshold on wet days (rain in the 48 h before "
                   "sampling at or above the wet threshold in `config/business_rules.yaml`) vs dry days. "
-                  "`share_wet_higher` is the share of sites whose wet rate is above their dry rate. Sites need both wet "
+                  "`share_wet_higher` is the share of sites whose wet rate is above their dry rate and `share_tied` the share with "
+                  "equal rates (mostly both zero: sites that never exceed); the rest are lower when wet. Sites need both wet "
                   "and dry sample-days to be compared. This is an association, not proof that rain causes the exceedance, "
                   "and sites with few wet days give noisy rates.", ""]
     return "\n".join(lines)

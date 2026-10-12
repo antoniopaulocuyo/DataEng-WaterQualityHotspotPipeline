@@ -1,4 +1,4 @@
-"""Global Water Quality Hotspot Pipeline: one DAG from raw extraction to marts.
+"""Water Quality Hotspot Pipeline: one DAG from raw extraction to marts.
 
 Airflow 3.3.2 (pinned in docker-compose.yml and the Dockerfile). Imports come from
 the Airflow 3 Task SDK (`airflow.sdk`), not from the Airflow 2 `airflow.models` /

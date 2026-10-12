@@ -121,6 +121,8 @@ def test_wet_dry_table_known_answer():
     t = eda.table_wet_dry(cur).set_index("stratum")
     assert t.loc["us", "sites"] == 3 and t.loc["us", "sites_with_wet_and_dry"] == 2        # c has no wet days
     assert t.loc["us", "share_wet_higher"] == 0.5 and round(t.loc["us", "median_wet_rate"], 2) == 0.3
+    assert t.loc["europe", "share_tied"] == 0.0 and t.loc["us", "share_tied"] == 0.0     # 0.1 vs 0.0: not tied
+    assert eda._wet_dry_row(pd.DataFrame({"wet_exceedance_rate": [0.0, 0.0, 0.2], "dry_exceedance_rate": [0.0, 0.0, 0.1]}))["share_tied"] == 2 / 3
     assert t.loc["all", "sites_with_wet_and_dry"] == 3 and round(t.loc["all", "share_wet_higher"], 2) == 0.67
     assert eda.table_wet_dry({"dim_site": cur["dim_site"], "mart_site_hotspot": cur["mart_site_hotspot"].drop(
         columns="wet_exceedance_rate")}) is None
@@ -128,7 +130,7 @@ def test_wet_dry_table_known_answer():
 
 def test_weather_and_year_notes():
     full = pd.DataFrame({"pct_with_rain": [100.0, 99.0]})
-    assert "at least 99%" in eda.weather_note(full) and "provisional" not in eda.weather_note(full)
+    assert "weakest source has rain data for 99%" in eda.weather_note(full) and "provisional" not in eda.weather_note(full)
     assert "provisional" in eda.weather_note(pd.DataFrame({"pct_with_rain": [12.0, 100.0]}))
     by_year = pd.DataFrame({"year": [2019, 2020, 2021], "wqp": [5, 6, 7], "owq": [4, 0, 0], "total": [9, 6, 7]})
     assert eda.last_year_line(by_year).startswith("Last year with data per source: wqp 2021, owq 2019")
@@ -151,3 +153,4 @@ def test_report_has_new_sections_and_no_stale_rain_text(isolated_dirs, tmp_path,
     assert "## 11. Wet vs dry exceedance" in text and "**Coverage:**" in text and "Last year with data" in text
     assert "no sites found" in text                                  # Africa/Asia strata from config/sampling.yaml
     assert "Rain-based results are only meaningful once" not in text and "full weather pull" in text
+    assert "share_tied" in text and "`used_by_staging` refers to observation inputs only" in text

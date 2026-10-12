@@ -131,9 +131,9 @@ Rules for both: config and docs change in the **same PR** as the code; the PR st
  
 | Source | Terms |
 |---|---|
-| Open Water Quality (GEMStat, Eionet) | Observations remain the property of the contributing programmes; cite on reuse; attribution file bundled with each export |
-| Water Quality Portal | US federal public data (citation terms: VERIFY, see [`source_inventory.md`](source_inventory.md)) |
-| Open-Meteo | Free for non-commercial use; attribution required (VERIFY) |
+| Open Water Quality (GEMStat, Eionet) | Observations remain the property of the contributing programmes; cite on reuse. The attribution text is in the header of every raw file (copy in [`evidence/owq_attribution.txt`](evidence/owq_attribution.txt)). GEMStat's open data policy is equivalent to CC BY 4.0 (some data under a limited, non-commercial policy); EEA data is CC BY 4.0. See [`source_inventory.md`](source_inventory.md) |
+| Water Quality Portal | US federal public data; cite as *Water Quality Portal*, National Water Quality Monitoring Council, USGS and EPA, https://doi.org/10.5066/P9QRKUVJ |
+| Open-Meteo | Free for non-commercial use; CC BY 4.0, attribution required ([Open-Meteo.com](https://open-meteo.com/)) |
 | Natural Earth | Public domain |
  
 No personal data is collected. No credentials are stored in the repository.

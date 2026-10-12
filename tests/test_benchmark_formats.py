@@ -12,6 +12,7 @@ def test_benchmark_report_and_pruning(isolated_dirs, tmp_path, monkeypatch):
     report = bf.run(repeats=1, include_raw=False, docs_dir=tmp_path / "docs")
     text = report.read_text(encoding="utf-8")
     assert "## 2. Format comparison" in text and "## 3. Partition pruning" in text
+    assert "larger)" in text and "files and" in text and "formats that kept every column type" in text
 
     fmt = pd.read_csv(tmp_path / "out" / "benchmark" / "format_benchmark.csv")
     assert list(fmt["format"]) == ["csv", "json", "parquet"]
