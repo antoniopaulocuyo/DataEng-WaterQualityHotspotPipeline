@@ -12,6 +12,9 @@ data/**
 outputs/**
 !outputs/.gitkeep
 
+# Snapshot archives (REPRO-1)
+snapshot/
+
 # Python
 __pycache__/
 *.py[cod]
