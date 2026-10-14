@@ -3,6 +3,8 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from .config import is_snapshot_mode
+from .exceptions import ConfigError
 
 
 def make_batch_id(source_code: str, params: dict) -> str:
@@ -97,3 +99,17 @@ def file_is_complete(batch_dir: Path, name: str) -> bool:
     if not file_path.exists():
         return False
     return sha256_file(file_path) == entry["sha256"]
+
+
+def batch_is_complete(batch_dir: Path) -> bool:
+    """True if the manifest says success and every listed file exists with a matching checksum."""
+    m = read_manifest(batch_dir)
+    if m is None or m.get("status") != "success" or not m.get("files"):
+        return False
+    return all(file_is_complete(batch_dir, f["name"]) for f in m["files"])
+
+
+def fail_if_snapshot(batch_id: str) -> None:
+    """REPRO-1: in snapshot mode a missing or incomplete raw batch is an error, never a download."""
+    if is_snapshot_mode():
+        raise ConfigError(f"Snapshot missing batch {batch_id}; run scripts/fetch_snapshot.py")

@@ -38,7 +38,9 @@ from src.utils.config import load_yaml, validate_period
 from src.utils.exceptions import ConfigError, EmptyResponseError, SourceRequestError
 from src.utils.log import get_logger
 from src.utils.manifest import (
+    batch_is_complete,
     count_csv_rows,
+    fail_if_snapshot,
     file_entry,
     file_is_complete,
     make_batch_id,
@@ -172,6 +174,13 @@ def run(**overrides) -> Path:
     log.info(f"sites: {len(site_ids)} from {sites_path}; chunks: {len(chunks)} of up to {chunk_size}")
 
     batch_dir = raw_batch_dir(SOURCE_CODE, batch_id)
+
+    # REPRO-1: a complete batch is reused offline; in snapshot mode a missing one is an error.
+    if batch_is_complete(batch_dir):
+        log.info("batch complete, skipping")
+        return batch_dir / "manifest.json"
+    fail_if_snapshot(batch_id)
+
     previous = read_manifest(batch_dir) or {}
     files = {f["name"]: f for f in previous.get("files", [])}
     requests_log = list(previous.get("requests") or previous.get("requests_log") or [])
