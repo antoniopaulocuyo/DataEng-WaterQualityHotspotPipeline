@@ -2,8 +2,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .config import load_yaml
-from .exceptions import EmptyResponseError, SourceRequestError
+from .config import is_snapshot_mode, load_yaml
+from .exceptions import EmptyResponseError, NetworkDisabledError, SourceRequestError
 
 _DEFAULT_TIMEOUT = 30
 _DEFAULT_STATUS_FORCELIST = [429, 500, 502, 503, 504]
@@ -40,6 +40,12 @@ def request(
     logger=None,
 ) -> requests.Response:
     cfg = _http_config()
+        # REPRO-1: in snapshot mode the pipeline must never touch the network. Fail loudly, naming the URL.
+    if is_snapshot_mode():
+        raise NetworkDisabledError(
+            f"PIPELINE_MODE=snapshot: network access is disabled, refusing {method} {url}. "
+            "Load the frozen raw data (python scripts/fetch_snapshot.py) or set PIPELINE_MODE=live."
+        )
     timeout = timeout or cfg.get("timeout_seconds", _DEFAULT_TIMEOUT)
     try:
         response = session.request(method, url, params=params, json=json_body, timeout=timeout)
