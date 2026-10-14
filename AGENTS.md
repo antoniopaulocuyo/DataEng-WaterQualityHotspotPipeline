@@ -6,7 +6,7 @@ Read this file completely before starting any ticket. Tickets reference the conv
     
 ## 1. Project context
 
-**Project:** Global Water Quality Hotspot Pipeline (university Data Engineering project, graded against a rubric).
+**Project:** Water Quality Hotspot Pipeline (university Data Engineering project, graded against a rubric).
 
 **Goal:** An automated, reproducible pipeline that ingests fecal indicator bacteria observations from several global sources, joins rainfall and temperature, identifies monitoring sites that exceed safety thresholds year after year ("persistent hotspots"), and ranks regions for water rehabilitation.
 
