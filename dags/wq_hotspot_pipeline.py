@@ -27,7 +27,7 @@ from typing import Any
 from airflow.sdk import DAG, Param, get_current_context, task
 from airflow.sdk.exceptions import AirflowFailException
 
-from src.utils.config import load_yaml
+from src.utils.config import load_yaml, pipeline_mode
 from src.utils.exceptions import ConfigError
 
 log = logging.getLogger(__name__)
@@ -117,6 +117,15 @@ def _run_id() -> str:
     """Airflow run id, passed to the load and validation steps for their reports and logs."""
     return get_current_context()["run_id"]
 
+def _pipeline_mode() -> str:
+    """REPRO-1: snapshot or live, from PIPELINE_MODE (set for every service in docker-compose.yml).
+
+    An invalid value is a configuration error: fail the task at once instead of retrying.
+    """
+    try:
+        return pipeline_mode()
+    except ConfigError as exc:
+        raise AirflowFailException(str(exc)) from exc
 
 def _call(target: str, *args: Any, **kwargs: Any) -> Any:
     """Import `module:function` when the task runs, call it, and make failures easy to read.
@@ -131,6 +140,7 @@ def _call(target: str, *args: Any, **kwargs: Any) -> Any:
         raise AirflowFailException(
             f"Callable {target} is not available (not merged yet, or an import in it failed): {exc!r}"
         ) from exc
+    log.info("PIPELINE_MODE=%s", _pipeline_mode())
     log.info("Calling %s with args=%s kwargs=%s", target, args, kwargs)
     try:
         return func(*args, **kwargs)
