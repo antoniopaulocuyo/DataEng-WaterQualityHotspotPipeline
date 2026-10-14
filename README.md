@@ -469,7 +469,37 @@ On Windows PowerShell, quotes inside JSON are not passed reliably to `docker`, s
 **Expected runtime** (first-run download times are estimates from our live runs; the final run reused the downloaded batches, and its load finished about 3 minutes after the trigger). Everything except weather takes under an hour: boundaries about 1 minute, OWQ 10–30 minutes, WQP site counts and sampling 5–20 minutes, WQP results 1–3 minutes, and sites, staging, curated, marts, load and validation a few minutes together. **Weather is the bottleneck:** Open-Meteo's free tier allows about 156 grid cells per day (9,000 weighted calls) and the sampled sites need about 256 cells. A first run therefore stops at the daily budget with a `partial` weather manifest, and `validate_raw` fails on it by design. Rerun the same trigger after 24 hours; completed cells are skipped. With all raw batches complete, a rerun takes minutes.
  
 **Inputs are live.** On a first run (empty `data/raw/`) set `PIPELINE_MODE=live` in `.env`; the pipeline then downloads from the source APIs (the raw files are about 0.4 GB and are git-ignored). The sources keep receiving data, so a later first run can differ slightly from ours. Reruns reuse the downloaded batches, and in the default `snapshot` mode the pipeline never touches the network, so it can be rerun offline from the same `data/raw/` folder. We do not ship our raw files; publishing them is listed under future improvements (§17).
- 
+ **Two modes: snapshot and live.** `PIPELINE_MODE` (in `.env`, default `snapshot`) decides where the raw data comes from.
+
+| Mode | What it does | Use it for |
+|---|---|---|
+| `snapshot` (default) | Uses the frozen raw data in `data/raw/` and makes **no network calls**. Any attempted call fails with `NetworkDisabledError`, naming the URL; a missing raw batch fails with `Snapshot missing batch <id>; run scripts/fetch_snapshot.py`. | Reproducing our results exactly |
+| `live` | Downloads fresh data from the source APIs; batches that are already complete are reused. | A first run without the snapshot; demonstrating automated ingestion |
+
+**Reproduce our results (snapshot mode).** The snapshot is our final raw data (about 0.4 GB), attached to a GitHub release; `config/snapshot.yaml` holds its URL and SHA-256.
+
+```bash
+python3 scripts/fetch_snapshot.py     # download, verify the SHA-256, extract into data/raw/ (Python 3, no packages)
+docker compose up -d --wait
+docker compose exec airflow-scheduler airflow dags unpause wq_hotspot_pipeline
+docker compose exec airflow-scheduler airflow dags trigger wq_hotspot_pipeline
+# when the run has finished (all tasks green):
+docker compose run --rm pipeline python -m src.analysis.verify_run
+```
+
+`verify_run` compares the database with `docs/expected_outputs.json` (row counts, hotspots per stratum × realm, top-10 regions, pipeline mode) and prints PASS/FAIL per item; it exits with code 1 if anything differs. With a local copy of the archive, use `python3 scripts/fetch_snapshot.py --file wq_raw_snapshot_<date>.tar.gz`. Batches that already exist in `data/raw/` are never overwritten unless you add `--force`.
+
+**Prove it runs offline.** `docker-compose.offline.yml` points all outbound HTTP(S) at a dead proxy, while keeping the internal services reachable:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.offline.yml up -d --wait
+```
+
+A snapshot-mode run still succeeds; any download attempt would fail.
+
+**Live mode.** Set `PIPELINE_MODE=live` in `.env`, then run `docker compose up -d` (this recreates the services with the new value). The sources keep receiving data, so a live first run can differ slightly from ours.
+
+**Making a new snapshot** (after a successful live run): `python3 scripts/make_snapshot.py` packages every complete raw batch into `snapshot/wq_raw_snapshot_<date>.tar.gz` and prints its size and SHA-256. Attach it to a GitHub release named `snapshot-<date>`, put the download URL and checksum in `config/snapshot.yaml`, and refresh the expected results with `python -m src.analysis.verify_run --write-expected`.
 **Rerun strategy.** Running twice with the same parameters gives the same result and never duplicates data:
  
 - **Deterministic batch IDs.** `batch_id = {source}_{sha256(params)[:12]}` with no timestamps, so the same parameters write to the same raw folder. A complete batch is detected **before** any network call and skipped; an interrupted one resumes from its last completed file.
