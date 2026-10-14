@@ -23,3 +23,7 @@ class ManifestMismatchError(PipelineError):
 
 class LandingFileMissingError(PipelineError):
     """Raised when a required landing file (e.g. a manually downloaded export) is absent."""
+
+
+class NetworkDisabledError(PipelineError):
+    """Raised when code tries to reach the network while PIPELINE_MODE=snapshot."""

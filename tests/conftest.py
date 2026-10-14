@@ -15,4 +15,5 @@ def isolated_dirs(tmp_path, monkeypatch):
     shutil.copytree(REPO_CONFIG, cfg)
     monkeypatch.setenv("DATA_DIR", str(data))
     monkeypatch.setenv("CONFIG_DIR", str(cfg))
+    monkeypatch.setenv("PIPELINE_MODE", "live")  # extractor tests mock the API; snapshot tests opt in
     return data, cfg

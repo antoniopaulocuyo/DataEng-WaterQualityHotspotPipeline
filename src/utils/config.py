@@ -70,3 +70,20 @@ def validate_period(start_year: int, end_year: int) -> None:
     current_year = datetime.now(timezone.utc).year
     if end_year > current_year:
         raise ConfigError(f"end_year ({end_year}) is in the future (current year: {current_year})")
+    
+
+# ---------------------------------------------------------------- pipeline mode (REPRO-1)
+
+PIPELINE_MODES = ("snapshot", "live")
+
+
+def pipeline_mode() -> str:
+    """PIPELINE_MODE: 'snapshot' (default: frozen raw data, no network) or 'live' (download fresh data)."""
+    mode = get_env("PIPELINE_MODE", default="snapshot").strip().lower()
+    if mode not in PIPELINE_MODES:
+        raise ConfigError(f"PIPELINE_MODE must be one of {PIPELINE_MODES}, got {mode!r}")
+    return mode
+
+
+def is_snapshot_mode() -> bool:
+    return pipeline_mode() == "snapshot"

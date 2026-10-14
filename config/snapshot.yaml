@@ -1,0 +1,6 @@
+# REPRO-1: frozen raw data for PIPELINE_MODE=snapshot (read by scripts/fetch_snapshot.py).
+# Flat "key: value" lines only: the script reads it without PyYAML so it runs on any Python 3.
+# Filled in after running scripts/make_snapshot.py and uploading the archive to a GitHub release.
+url: ""        # release asset URL: https://github.com/<owner>/<repo>/releases/download/snapshot-<date>/<archive>
+sha256: ""     # printed by make_snapshot.py (also in the .sha256 file next to the archive)
+archive: ""    # file name, e.g. wq_raw_snapshot_<date>.tar.gz

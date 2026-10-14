@@ -103,6 +103,7 @@ def run(**overrides) -> Path:
     if _all_complete(batch_dir, existing):
         logger.info("Batch already complete, nothing to do")
         return batch_dir / "manifest.json"
+    manifest.fail_if_snapshot(batch_id)
 
     requests_log: list[dict] = list(existing.get("requests_log", [])) if existing else []
     zip_path = batch_dir / ZIP_NAME

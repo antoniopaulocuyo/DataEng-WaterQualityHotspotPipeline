@@ -150,13 +150,11 @@ def run(**overrides) -> Path:
         batch_id = manifest.make_batch_id(source_code, params)
         batch_dir = paths.raw_batch_dir(source_code, batch_id, create=True)
 
-        existing = manifest.read_manifest(batch_dir)
-        if existing is not None and all(
-            manifest.file_is_complete(batch_dir, f["name"]) for f in existing["files"]
-        ):
+        if manifest.batch_is_complete(batch_dir):
             logger.info("Batch %s already complete, skipping", batch_id)
             last_manifest_path = batch_dir / "manifest.json"
             continue
+        manifest.fail_if_snapshot(batch_id)
 
         logger.info("Starting extraction for %s (%s)", source_code, source_label)
         files, requests_log, warnings = _extract_one_source(

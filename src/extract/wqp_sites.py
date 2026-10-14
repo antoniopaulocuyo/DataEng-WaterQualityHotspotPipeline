@@ -256,24 +256,32 @@ def run(**overrides) -> Path:
     characteristics = primary_characteristic_names(wqp_cfg, sampling_cfg)
 
     session = http.build_session()
-    states = overrides.get("states")
-    if not states:
-        # Deviation from AGENTS.md 7.2: the state list comes from the Codes endpoint (ticket step 2)
-        # and is part of the batch params, so one cheap Codes call happens before the batch check.
-        states = fetch_state_codes(session, log.get_logger(STAGE, SOURCE_CODE), wqp_cfg)
-    states = sorted(states)
+    override_states = sorted(overrides["states"]) if overrides.get("states") else None
 
+    # REPRO-1 step 4: the batch id comes from config only. The state list is fetched during the run
+    # (a network call) and recorded in the manifest, so a complete batch is recognised offline.
+    # A --states subset (development runs) stays in the id, so it can never pass for a full run.
     params = {
-        "states": states,
+        "countrycode": wqp_cfg["countrycode"],
         "site_types": site_types,
         "characteristic_names": characteristics,
         "period": {"start_year": start_year, "end_year": end_year},
         "sampling": sampling_cfg,
         "summary_url": wqp_cfg["summary_url"],
     }
+    if override_states:
+        params["states"] = override_states
     batch_id = manifest.make_batch_id(SOURCE_CODE, params)
     logger = log.get_logger(STAGE, SOURCE_CODE, batch_id)
     batch_dir = paths.raw_batch_dir(SOURCE_CODE, batch_id, create=True)
+
+    if manifest.batch_is_complete(batch_dir):
+        logger.info("Batch already complete, skipping")
+        return batch_dir / "manifest.json"
+    manifest.fail_if_snapshot(batch_id)
+
+    states = override_states or sorted(fetch_state_codes(session, logger, wqp_cfg))
+    recorded_params = {**params, "states": states}  # the manifest records the states; the id does not
     logger.info("Start: states requested=%d, characteristics=%s, site_types=%s",
                 len(states), characteristics, site_types)
 
@@ -292,7 +300,7 @@ def run(**overrides) -> Path:
 
     def _write(status: str, notes: str) -> Path:
         return manifest.write_manifest(
-            batch_dir, source_code=SOURCE_CODE, batch_id=batch_id, params=params,
+            batch_dir, source_code=SOURCE_CODE, batch_id=batch_id, params=recorded_params,
             requests_log=requests_log, files=sorted(files, key=lambda f: f["name"]),
             status=status, warnings=warnings, notes=notes,
         )

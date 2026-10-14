@@ -37,6 +37,8 @@ from src.utils.config import load_yaml, validate_period
 from src.utils.exceptions import ConfigError
 from src.utils.log import get_logger
 from src.utils.manifest import (
+    batch_is_complete,
+    fail_if_snapshot,
     file_entry,
     file_is_complete,
     make_batch_id,
@@ -175,6 +177,15 @@ def run(**overrides) -> Path:
              f"interval between requests {min_interval:.1f}s")
 
     batch_dir = raw_batch_dir(SOURCE_CODE, batch_id)
+
+    # REPRO-1: a complete batch is reused offline; in snapshot mode a missing one is an error.
+    # (--plan never calls the API, so it is allowed in both modes.)
+    if not overrides.get("plan"):
+        if batch_is_complete(batch_dir):
+            log.info("batch complete, skipping")
+            return batch_dir / "manifest.json"
+        fail_if_snapshot(batch_id)
+
     grid_cells.to_csv(batch_dir / "grid_cells.csv", index=False)
     site_cells.to_csv(batch_dir / "site_cells.csv", index=False)
     if overrides.get("plan"):
