@@ -1,8 +1,0 @@
-﻿2026-10-11 10:25:21 | INFO | stage=analysis | source=benchmark | batch=- | staging_observations csv: 6.898 MB, write 0.693s, read 0.165s
-2026-10-11 10:25:26 | INFO | stage=analysis | source=benchmark | batch=- | staging_observations json: 15.368 MB, write 0.250s, read 0.574s
-2026-10-11 10:25:27 | INFO | stage=analysis | source=benchmark | batch=- | staging_observations parquet: 2.439 MB, write 0.141s, read 0.058s
-2026-10-11 10:26:38 | INFO | stage=analysis | source=benchmark | batch=- | owq_raw_observations csv: 100.204 MB, write 14.569s, read 1.685s
-2026-10-11 10:28:37 | INFO | stage=analysis | source=benchmark | batch=- | owq_raw_observations json: 257.007 MB, write 5.700s, read 14.179s
-2026-10-11 10:28:44 | INFO | stage=analysis | source=benchmark | batch=- | owq_raw_observations parquet: 6.894 MB, write 1.622s, read 0.257s
-2026-10-11 10:28:45 | INFO | stage=analysis | source=benchmark | batch=- | report /opt/project/docs/format_benchmark.md; tables in /opt/project/outputs/benchmark
-/opt/project/docs/format_benchmark.md

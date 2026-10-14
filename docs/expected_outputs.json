@@ -1,0 +1,73 @@
+{
+  "hotspots_by_stratum_realm": {
+    "europe/freshwater": 3,
+    "europe/marine": 2,
+    "gemstat_latin_america/freshwater": 53,
+    "us/freshwater": 16,
+    "us/marine": 14
+  },
+  "pipeline_mode": "snapshot",
+  "row_counts": {
+    "dim_grid_cell": 256,
+    "dim_indicator": 4,
+    "dim_region": 107,
+    "dim_site": 300,
+    "dim_source": 3,
+    "fact_observation": 25108,
+    "fact_weather_daily": 1028608,
+    "mart_region_priority": 97,
+    "mart_site_hotspot": 285
+  },
+  "top_regions": [
+    {
+      "rank": 1,
+      "region_code": "MEX-2730",
+      "score": 0.737651
+    },
+    {
+      "rank": 2,
+      "region_code": "MEX-2723",
+      "score": 0.635818
+    },
+    {
+      "rank": 3,
+      "region_code": "MEX-2724",
+      "score": 0.62307
+    },
+    {
+      "rank": 4,
+      "region_code": "MEX-2719",
+      "score": 0.547664
+    },
+    {
+      "rank": 5,
+      "region_code": "MEX-2734",
+      "score": 0.542554
+    },
+    {
+      "rank": 6,
+      "region_code": "MEX-2731",
+      "score": 0.50884
+    },
+    {
+      "rank": 7,
+      "region_code": "MEX-2714",
+      "score": 0.490694
+    },
+    {
+      "rank": 8,
+      "region_code": "USA-3555",
+      "score": 0.487846
+    },
+    {
+      "rank": 9,
+      "region_code": "MEX-2716",
+      "score": 0.480591
+    },
+    {
+      "rank": 10,
+      "region_code": "MEX-2735",
+      "score": 0.436786
+    }
+  ]
+}
