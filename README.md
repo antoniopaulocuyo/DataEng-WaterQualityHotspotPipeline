@@ -180,7 +180,7 @@ Diagrams (Mermaid, rendered by GitHub): [architecture](docs/architecture.md) · 
 ## 6. Repository Structure
  
 ```
-water-quality-hotspots/
+project/
 ├── README.md
 ├── Agents.md                   # conventions for contributors (human or AI)
 ├── requirements.txt            # Python dependencies (pinned, compatible with Airflow's constraints)
@@ -228,7 +228,7 @@ water-quality-hotspots/
 │   ├── analysis/               # eda, export_site (dashboard data)
 │   └── utils/                  # config, log, http, manifest, paths, sampling, exceptions
 │
-├── tests/                      # 19 test modules
+├── tests/                      # pytest modules, one per src module
 └── outputs/                    # contents git-ignored: dq reports, reconciliation, priority ranking, EDA tables
 ```
  
