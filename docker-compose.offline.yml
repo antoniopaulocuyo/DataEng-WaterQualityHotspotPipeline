@@ -1,0 +1,22 @@
+# REPRO-1 acceptance test: block all outbound HTTP(S) from the pipeline containers.
+#   docker compose -f docker-compose.yml -f docker-compose.offline.yml up -d
+# Every download attempt then hits a dead proxy (127.0.0.1:9) and fails; a snapshot-mode
+# run must still succeed. NO_PROXY keeps the internal services reachable: Airflow 3 tasks
+# talk to the API server over HTTP, and the databases must stay reachable.
+x-offline-env: &offline-env
+  HTTP_PROXY: http://127.0.0.1:9
+  HTTPS_PROXY: http://127.0.0.1:9
+  http_proxy: http://127.0.0.1:9
+  https_proxy: http://127.0.0.1:9
+  NO_PROXY: localhost,127.0.0.1,postgres,airflow-db,airflow-apiserver
+  no_proxy: localhost,127.0.0.1,postgres,airflow-db,airflow-apiserver
+
+services:
+  airflow-apiserver:
+    environment: *offline-env
+  airflow-scheduler:
+    environment: *offline-env
+  airflow-dag-processor:
+    environment: *offline-env
+  pipeline:
+    environment: *offline-env
